@@ -49,6 +49,9 @@ namespace LiveSplit.GW2SAB
         private bool _pauseOnExit;
         private double _blackBarSize;
         private double _blackPixelPercentage;
+        private bool _stickToChar;
+        private bool _presetName;
+        private String _stickyCharName;
 
         private Coordinates3 AvatarPosition => _client.Mumble.AvatarPosition;
 
@@ -101,12 +104,16 @@ namespace LiveSplit.GW2SAB
             var raw_MaxSkippedTicks = raw_config.GetValueOrDefault("MaxSkippedTicks", "3");
             var raw_BlackBarSize = raw_config.GetValueOrDefault("BlackBarSize", "0.1");
             var raw_BlackPixelPercentage = raw_config.GetValueOrDefault("BlackPixelPercentage", "0.8");
+            var raw_StickToChar = raw_config.GetValueOrDefault("StickToChar", "true");
+            var _stickyCharName = raw_config.GetValueOrDefault("StickyCharName", "");
+            var _presetName = !_stickyCharName.Equals("");
             if (!LoadingScreen.TryParse(raw_LoadingScreen, true, out _loadingScreen)) _loadingScreen = LoadingScreen.Include;
             if (!StartCondition.TryParse(raw_StartCondition, true, out _startCondition)) _startCondition = StartCondition.Moving;
             if (!Boolean.TryParse(raw_PauseOnExit, out _pauseOnExit)) _pauseOnExit = true;
             if (!int.TryParse(raw_MaxSkippedTicks, out MaxSkippedTicks)) MaxSkippedTicks = 3;
             if (!double.TryParse(raw_BlackBarSize, out _blackBarSize)) _blackBarSize = 0.1f;
             if (!double.TryParse(raw_BlackPixelPercentage, out _blackPixelPercentage)) _blackPixelPercentage = 0.8f;
+            if (!Boolean.TryParse(raw_StickToChar, out _stickToChar)) _stickToChar=true;
         }
 
         private void LoadCheckpoints()
@@ -269,19 +276,24 @@ namespace LiveSplit.GW2SAB
             var playingTransition = noTickUpdateCount > MaxSkippedTicks;
             var avatarPosition = AvatarPosition;
             Log.Info($"\n[{avatarPosition.X}, {avatarPosition.Z}],");
+            var nameChecksOut = !_stickToChar || _stickyCharName.Equals(_client.Mumble.CharacterName);
 
             if (_loadingScreen != LoadingScreen.Include)
             {
                 // Loading-Screen Start
                 if (IsLoading())
                 {
-                    if (state.CurrentPhase == TimerPhase.Running && _loadingScreen == LoadingScreen.Exclude)
+                    if (state.CurrentPhase == TimerPhase.Running && _loadingScreen == LoadingScreen.Exclude
+                        && nameChecksOut)   // only unpause on the right char
                     {
                         _timer.Pause();
                         wasAutoPaused = true;
                         Log.Info("Pausing during a loading screen");
                     }
-                    else if (state.CurrentPhase == TimerPhase.Paused && _loadingScreen == LoadingScreen.Only && wasAutoPaused)
+                    else if (state.CurrentPhase == TimerPhase.Paused && _loadingScreen == LoadingScreen.Only && wasAutoPaused
+                        && nameChecksOut)   // Do not count loading-screens on the wrong char.
+                                            // This is broken because the first loading-screen into a different char will be counted,
+                                            // while the first screen into the right char will not
                     {
                         _timer.Pause();
                         wasAutoPaused = false;
@@ -296,7 +308,9 @@ namespace LiveSplit.GW2SAB
                         _timer.Pause();
                         wasAutoPaused = true;
                         Log.Info($"Pausing after a loading screen");
+                        // with regards to character names this case is safe: even if character was changed it need to stop counting
                     } else if (state.CurrentPhase == TimerPhase.Paused && _loadingScreen == LoadingScreen.Exclude && wasAutoPaused
+                        && nameChecksOut        // only unpause on the right character, otherwise keep paused until switching back to the right one
                         && !IsTransitioning())   // if paused in transition, which is not a loading screen, do not unpause, probably character select after restart
                     {
                         _timer.Pause();
@@ -304,6 +318,19 @@ namespace LiveSplit.GW2SAB
                         Log.Info($"Starting after a loading screen");
                     }
                 }
+            } else if (_stickToChar) {
+                // if running and wrong char and flag not set -> pause
+                // if not running, right char and was paused -> unpause
+                // maybe: if manually paused on right char or unpausing on wrong -> wait for normal conditions and clear flag
+                if (!nameChecksOut && state.CurrentPhase == TimerPhase.Running && !wasAutoPaused)
+                {
+                    _timer.Pause();
+                    wasAutoPaused = true;
+                } else if (nameChecksOut && state.CurrentPhase == TimerPhase.Paused && wasAutoPaused)
+                {
+                        _timer.Pause();
+                        wasAutoPaused = false;
+                } //else if ( nameChecksOut && state.CurrentPhase == TimerPhase.Running && wasAutoPaused ) wasAutoPaused = false; // reset flags after manual intervention
             }
 
             // Redo Check to skip empty maps
@@ -369,18 +396,23 @@ namespace LiveSplit.GW2SAB
             _timer.OnReset += state_onReset;
             _client.Mumble.Update();
             wasAutoPaused = false;
+            if (!_presetName) _stickyCharName = "";
         }
 
         private void state_onReset(object sender, TimerPhase timerPhase)
         {
             _lastCheckpoint.Clear();
             wasAutoPaused = false;
+            if (!_presetName) _stickyCharName = "";
         }
 
         private void StartTimerIfNeeded(Coordinates3 lastPosition, bool wasPlayingTransition)
         {
             _client.Mumble.Update();
             var newPosition = AvatarPosition;
+            var nameMatches = _client.Mumble.CharacterName.Equals(_stickyCharName);
+            var nameCanStart = !_stickToChar || nameMatches || !_presetName;
+            if (!nameCanStart) return;
 
             switch (_startCondition)
             {
@@ -391,9 +423,10 @@ namespace LiveSplit.GW2SAB
                         _timer.Start();
                         if (_loadingScreen == LoadingScreen.Only)
                         {
-                            _timer.Pause(); // immeadiatly pause until loadingscreen starts
+                            _timer.Pause(); // immediately pause until loadingscreen starts
                             wasAutoPaused = true;
                         }
+                        if (_stickToChar && !_presetName) _stickyCharName=_client.Mumble.CharacterName;
                     }
                     break;
 
@@ -404,9 +437,10 @@ namespace LiveSplit.GW2SAB
                         _timer.Start();
                         if (_loadingScreen == LoadingScreen.Exclude)
                         {
-                            _timer.Pause(); // immeadiatly pause until loadingscreen ends
+                            _timer.Pause(); // immediately pause until loadingscreen ends
                             wasAutoPaused = true;
                         }
+                        if (_stickToChar && !_presetName) _stickyCharName=_client.Mumble.CharacterName;     // Idk, can this even happen?
                     }
                     break;
 
@@ -417,9 +451,10 @@ namespace LiveSplit.GW2SAB
                         _timer.Start();
                         if (_loadingScreen == LoadingScreen.Only)
                         {
-                            _timer.Pause(); // immeadiatly pause until next loadingscreen starts
+                            _timer.Pause(); // immediately pause until next loadingscreen starts
                             wasAutoPaused = true;
                         }
+                        if (_stickToChar && !_presetName) _stickyCharName=_client.Mumble.CharacterName;
                     }
                     break;
 
@@ -430,9 +465,10 @@ namespace LiveSplit.GW2SAB
                         _timer.Start();
                         if (_loadingScreen == LoadingScreen.Only)
                         {
-                            _timer.Pause(); // immeadiatly pause until next loadingscreen starts
+                            _timer.Pause(); // immediately pause until next loadingscreen starts
                             wasAutoPaused = true;
                         }
+                        if (_stickToChar && !_presetName) _stickyCharName=_client.Mumble.CharacterName;
                     }
                     break;
             }
