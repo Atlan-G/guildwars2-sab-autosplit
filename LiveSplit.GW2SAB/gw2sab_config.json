@@ -1,8 +1,10 @@
 {
-    "LoadingScreens": "include",
+    "LoadingScreens": "exclude",
     "StartCondition": "moving",
     "PauseOnExit": "true",
     "MaxSkippedTicks": "3",
     "BlackBarSize": "0.07",
-    "BlackPixelPercentage":  "0.8"
+    "BlackPixelPercentage":  "0.8",
+    "StickToChar": "true",
+    "StickyCharName": ""
 }

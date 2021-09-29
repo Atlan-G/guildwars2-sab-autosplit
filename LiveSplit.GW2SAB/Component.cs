@@ -105,8 +105,8 @@ namespace LiveSplit.GW2SAB
             var raw_BlackBarSize = raw_config.GetValueOrDefault("BlackBarSize", "0.1");
             var raw_BlackPixelPercentage = raw_config.GetValueOrDefault("BlackPixelPercentage", "0.8");
             var raw_StickToChar = raw_config.GetValueOrDefault("StickToChar", "true");
-            var _stickyCharName = raw_config.GetValueOrDefault("StickyCharName", "");
-            var _presetName = !_stickyCharName.Equals("");
+            _stickyCharName = raw_config.GetValueOrDefault("StickyCharName", "");
+            _presetName = !_stickyCharName.Equals("");
             if (!LoadingScreen.TryParse(raw_LoadingScreen, true, out _loadingScreen)) _loadingScreen = LoadingScreen.Include;
             if (!StartCondition.TryParse(raw_StartCondition, true, out _startCondition)) _startCondition = StartCondition.Moving;
             if (!Boolean.TryParse(raw_PauseOnExit, out _pauseOnExit)) _pauseOnExit = true;
