@@ -13,7 +13,7 @@ This is a LiveSplit Auto Splitter which splits the timer whenever you pass a che
 5. Open the Splits for the zone you intend to run by right clicking and going to **Open Splits - From File** and selecting the appropriate file from the `Components\GW2SAB\Splits` directory
 6. Right click - Edit Layout - Add - Control - **Guild Wars 2 Super Adventure Box auto splitter**
 
-For usage specific to map completion also check out [MapComp.md](https://github.com/Atlan-G/guildwars2-sab-autosplit/blob/main/MapComp.md)
+For usage specific to map completion also check out [MapComp.md](https://github.com/Atlan-G/guildwars2-sab-autosplit/blob/master/MapComp.md)
 
 ### Adding custom checkpoints
 You can modify [gw2sab_checkpoints.json](https://github.com/Stonos/guildwars2-sab-autosplit/blob/master/LiveSplit.GW2SAB/gw2sab_checkpoints.json) in order to add new checkpoints (you can use something like [these scripts](https://github.com/Atlan-G/gw2-mumble-dev-scripts) to grab the `X` and `Z` coordinates).
