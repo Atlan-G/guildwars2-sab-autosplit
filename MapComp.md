@@ -7,7 +7,7 @@ Using this method should produce times with accuracy down to a few seconds.
 0. You can watch this [video tutorial](https://youtu.be/s3Vweo2-Pcs) if you want.
 1. Install LiveSplit + this Component in two different directories.
 2. Edit both your layouts and add the component.
-3. Load your Splits in one of the instances.
+3. Load the Splits from the pre-made files or "Edit Splits" in one of the instances.
 4. Edit the configurations in ``Components\GW2SAB\gw2sab_config.json``.  
 The two versions should be (first for Splits, second for loading screens):
 ```json
